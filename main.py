@@ -74,8 +74,9 @@ class BinBuilder:
 		38 bets / 38 outcomes
 		""" 
 		outcomes = []
-		for n in range(0,38):
-			outcomes.append(n , Outcome(str(n), 35))
+		for n in range(0,37):
+			outcomes.append((n, Outcome(str(n), 35)))
+		outcomes.append((37, Outcome("00", 35)))
 		return outcomes
   
 	def splitBets(self):
@@ -92,6 +93,11 @@ class BinBuilder:
 		12 possible bets / 36 outcomes
 		"""
 		outcomes = []
+		for r in range(0,12):
+			n = 3*r+1
+			street = [n, n+1,n+2]
+			for i in range(0,3):
+				outcomes.append((street[i], Outcome(f"Street {street[0]}-{street[1]}-{street[2]}", 11)))
 		return outcomes
 
 	def lineBets(self):
@@ -108,6 +114,9 @@ class BinBuilder:
 		3 possible bets
 		"""
 		outcomes = []
+		for d in range(0, 3): #TODO
+			for m in range(0, 12):
+				break
 		return outcomes
 	
 	def cornerBets(self):
@@ -124,6 +133,3 @@ class BinBuilder:
 		"""
 		outcomes = []
 		return outcomes
-
-bb = BinBuilder()
-print(bb.straightBets())
