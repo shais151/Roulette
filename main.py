@@ -23,12 +23,10 @@ class Outcome:
 		return hash(self.name)
 
 	def __str__(self) -> str:
-		return "{name:s} ({odds:d}:1)".format_map(vars(self))
+		return f"{self.name} ({self.odds}:1)"
 	
 	def __repr__(self) -> str:
-		return "{class_:s}({name!r}, {odds!r})".format(
-			class_=type(self).__name__, **vars(self)
-		)
+		return f"{self.__class__.__name__}({self.name}, {self.odds})"
 
 class Bin(frozenset):
 	"""
@@ -49,15 +47,24 @@ class Wheel:
 		self.bins = tuple(Bin() for _ in range(38))
 		self.rng = random.Random()
 		self.rng.seed(4)
+		self.all_outcomes = set()
+		bb = BinBuilder()                   
+		bb.buildBins(self)  
 
 	def addOutcome(self, number, outcome):
+		self.all_outcomes.add(outcome)
 		self.bins[number] = Bin(self.bins[number] | Bin([outcome]))
 
 	def next(self):
-		return self.rng.randint(0, 37) #TODO
+		return self.bins[self.rng.randint(0,37)]
 
 	def get(self, bin) -> Bin:
 		return self.bins[bin]
+
+	def getOutcome(self, outcomeName):
+		for outcome in self.all_outcomes:
+			if outcome.name == outcomeName:
+				return outcome
 
 class BinBuilder:
 	"""
@@ -66,7 +73,11 @@ class BinBuilder:
 	Chapter 8, pages 53-58
 	"""
 	def buildBins(self, wheel):
-		pass
+		outcomes = self.straightBets() + self.splitBets() + self.streetBets() + self.cornerBets()
+		outcomes += self.lineBets() + self.dozenBets() + self.outsideBets()
+
+		for outcome in outcomes:
+			wheel.addOutcome(outcome[0], outcome[1])
 
 	def straightBets(self):
 		"""
@@ -85,6 +96,16 @@ class BinBuilder:
 		114 bets / 114 outcomes
 		"""
 		outcomes = []
+		plusone = list(range(1,35,3)) + list(range(2,36,3))
+		plusthree = list(range(1,34))
+		for i in plusone:
+			string = f"Split {str(i)}-{str(i+1)}"
+			outcomes.append((i, Outcome(string,17)))
+			outcomes.append((i+1, Outcome(string,17)))
+		for i in plusthree:
+			string = f"Split {str(i)}-{str(i+3)}"
+			outcomes.append((i, Outcome(string,17)))
+			outcomes.append((i+3, Outcome(string,17)))
 		return outcomes
   
 	def streetBets(self):
@@ -133,3 +154,50 @@ class BinBuilder:
 		"""
 		outcomes = []
 		return outcomes
+
+class Bet:
+	def __init__(self, amount: int, outcome):
+		self.amountBet = int(amount)
+		self.outcome = outcome
+	
+	def winAmount(self) -> int:
+		return self.outcome.winAmount(self.amount) + self.amount
+	
+	def loseAmount(self) -> int:
+		return self.amountBet
+
+	def __str__(self) -> str:
+		return f"{self.amountBet} on {self.outcome}"
+
+	def __repr__(self) -> str:
+		return f"{self.__class__.__name__}({self.amountBet}, {self.outcome})"
+
+class Table:
+	"""
+	A table is where bets can be placed
+	Chapter 10, pages 63-68
+	"""
+	def __init__(self, limit, minimum, wheel):
+		pass
+
+	def placeBet(self, bet):
+		pass
+
+	def __iter__(self) -> iter:
+		return self.bets[:].__iter__()
+	
+	def __str__(self) -> str:
+		pass
+
+	def __repr__(self) -> str:
+		pass
+	
+	def isValid(self, bet):
+		pass
+
+	def clearBets(self):
+		self.bets.clear()
+
+class Invalidbet(Exception):
+	def __init__(self, expression):
+		self.expression = expression
