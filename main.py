@@ -7,8 +7,8 @@ class Outcome:
 	Chapter5, pages 37-43
 	"""
 	def __init__(self, name:str, odds:int):
-		self.name = str(name)
-		self.odds = int(odds)
+		self.name:str = str(name)
+		self.odds:int = int(odds)
 
 	def winAmount(self, amount:float) -> float:
 		return self.odds * amount
@@ -44,10 +44,10 @@ class Wheel:
 	Chapter 7, pages 49-52
 	"""
 	def __init__(self):
-		self.bins = tuple(Bin() for _ in range(38))
+		self.bins:tuple = tuple(Bin() for _ in range(38))
 		self.rng = random.Random()
 		self.rng.seed(4)
-		self.all_outcomes = set()
+		self.all_outcomes:set = set()
 		bb = BinBuilder()                   
 		bb.buildBins(self)  
 
@@ -79,23 +79,23 @@ class BinBuilder:
 		for outcome in outcomes:
 			wheel.addOutcome(outcome[0], outcome[1])
 
-	def straightBets(self):
+	def straightBets(self) -> list:
 		"""
 		Bet on a single number paying at 35:1
 		38 bets / 38 outcomes
 		""" 
-		outcomes = []
+		outcomes:list = []
 		for n in range(0,37):
 			outcomes.append((n, Outcome(str(n), 35)))
 		outcomes.append((37, Outcome("00", 35)))
 		return outcomes
   
-	def splitBets(self):
+	def splitBets(self) -> list:
 		"""
 		Adjacent pair of numbers (column or row) paying at 17:1
 		114 bets / 114 outcomes
 		"""
-		outcomes = []
+		outcomes:list = []
 		plusone = list(range(1,35,3)) + list(range(2,36,3))
 		plusthree = list(range(1,34))
 		for i in plusone:
@@ -108,12 +108,12 @@ class BinBuilder:
 			outcomes.append((i+3, Outcome(string,17)))
 		return outcomes
   
-	def streetBets(self):
+	def streetBets(self) -> list:
 		"""
 		3 numbers in a single row paying at 11:1
 		12 possible bets / 36 outcomes
 		"""
-		outcomes = []
+		outcomes:list = []
 		for r in range(0,12):
 			n = 3*r+1
 			street = [n, n+1,n+2]
@@ -121,43 +121,43 @@ class BinBuilder:
 				outcomes.append((street[i], Outcome(f"Street {street[0]}-{street[1]}-{street[2]}", 11)))
 		return outcomes
 
-	def lineBets(self):
+	def lineBets(self) -> list:
 		"""
 		A 6 number block (2 street bets) paying at 5:1
 		11 possible bets
 		"""
-		outcomes = []
+		outcomes:list = []
 		return outcomes
 
-	def dozenBets(self):
+	def dozenBets(self) -> list:
 		"""
 		Each number is member of one of three dozens paying at 2:1
 		3 possible bets
 		"""
-		outcomes = []
+		outcomes:list = []
 		for d in range(0, 3): #TODO
 			for m in range(0, 12):
 				break
 		return outcomes
 	
-	def cornerBets(self):
+	def cornerBets(self) -> list:
 		"""
 		A square of 4 numbers paying at 8:1
 		22 possible bets / 88 outcomes
 		"""
-		outcomes = []
+		outcomes:list = []
 		return outcomes
 
-	def outsideBets(self):
+	def outsideBets(self) -> list:
 		"""
 		All other bets e.g. Red/Black, Low/High, Even/Odd
 		"""
-		outcomes = []
+		outcomes:list = []
 		return outcomes
 
 class Bet:
 	def __init__(self, amount: int, outcome):
-		self.amountBet = int(amount)
+		self.amountBet:int = int(amount)
 		self.outcome = outcome
 	
 	def winAmount(self) -> int:
