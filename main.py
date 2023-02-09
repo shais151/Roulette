@@ -1,4 +1,5 @@
 import random
+import math
 
 class Outcome:
 	"""
@@ -44,7 +45,7 @@ class Wheel:
 	Chapter 7, pages 49-52
 	"""
 	def __init__(self):
-		self.bins:tuple = tuple(Bin() for _ in range(38))
+		self.bins:list[Bin] = list(Bin() for _ in range(38))
 		self.rng = random.Random()
 		self.rng.seed(4)
 		self.all_outcomes:set = set()
@@ -99,13 +100,11 @@ class BinBuilder:
 		plusone = list(range(1,35,3)) + list(range(2,36,3))
 		plusthree = list(range(1,34))
 		for i in plusone:
-			string = f"Split {str(i)}-{str(i+1)}"
-			outcomes.append((i, Outcome(string,17)))
-			outcomes.append((i+1, Outcome(string,17)))
+			outcomes.append((i, Outcome(f"Split {str(i)}-{str(i+1)}",17)))
+			outcomes.append((i+1, Outcome(f"Split {str(i)}-{str(i+1)}",17)))
 		for i in plusthree:
-			string = f"Split {str(i)}-{str(i+3)}"
-			outcomes.append((i, Outcome(string,17)))
-			outcomes.append((i+3, Outcome(string,17)))
+			outcomes.append((i, Outcome(f"Split {str(i)}-{str(i+3)}",17)))
+			outcomes.append((i+3, Outcome(f"Split {str(i)}-{str(i+3)}",17)))
 		return outcomes
   
 	def streetBets(self) -> list:
@@ -127,6 +126,9 @@ class BinBuilder:
 		11 possible bets
 		"""
 		outcomes:list = []
+		for i in range(1, 33, 3):
+			for j in range(0, 6):
+				outcomes.append((i + j, Outcome(f"Line {i}-{i+1}-{i+2}-{i+3}-{i+4}-{i+5}", 5)))
 		return outcomes
 
 	def dozenBets(self) -> list:
@@ -135,9 +137,9 @@ class BinBuilder:
 		3 possible bets
 		"""
 		outcomes:list = []
-		for d in range(0, 3): #TODO
-			for m in range(0, 12):
-				break
+		for i in [1, 13, 25]:
+			for j in range(0, 12):
+				outcomes.append((i + j, Outcome(f"Dozen {i}-{i+11}", 2)))
 		return outcomes
 	
 	def cornerBets(self) -> list:
@@ -153,6 +155,20 @@ class BinBuilder:
 		All other bets e.g. Red/Black, Low/High, Even/Odd
 		"""
 		outcomes:list = []
+		reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
+		for i in range(1, 37):
+			if i < 19:
+				outcomes.append((i, Outcome("Low", 1)))
+			else:
+				outcomes.append((i, Outcome("High", 1)))
+			if i % 2 == 0:
+				outcomes.append((i, Outcome("Even", 1)))
+			else:
+				outcomes.append((i, Outcome("Odd", 1)))
+			if i in reds:
+				outcomes.append((i, Outcome("Red", 1)))
+			else:
+				outcomes.append((i, Outcome("Black", 1)))
 		return outcomes
 
 class Bet:
@@ -161,7 +177,7 @@ class Bet:
 		self.outcome = outcome
 	
 	def winAmount(self) -> int:
-		return self.outcome.winAmount(self.amount) + self.amount
+		return self.outcome.winAmount(self.amountBet) + self.amountBet
 	
 	def loseAmount(self) -> int:
 		return self.amountBet
@@ -177,11 +193,15 @@ class Table:
 	A table is where bets can be placed
 	Chapter 10, pages 63-68
 	"""
-	def __init__(self, limit, minimum, wheel):
-		pass
+	def __init__(self, limit, wheel):
+		self.limit = limit
+		self.bets = []
+		self.wheel = wheel
 
 	def placeBet(self, bet):
-		pass
+		self.bets.append(bet)
+		if not self.isValid(bet):
+			raise InvalidBet(f"The bet of {bet.amountBet} exceeds table limit of {self.limit}")
 
 	def __iter__(self) -> iter:
 		return self.bets[:].__iter__()
@@ -193,11 +213,190 @@ class Table:
 		pass
 	
 	def isValid(self, bet):
-		pass
+		if sum(obj.amountBet for obj in self.bets) > self.limit:
+			return False
+		return True
 
 	def clearBets(self):
 		self.bets.clear()
 
-class Invalidbet(Exception):
+class RouletteGame:
+	"""
+	This class manages the game state through the cycle method (place a bet, spin the wheel, settle bets)
+	Chapter 11, pages 69-73
+	"""
+	def __init__(self, wheel, table):
+		self.wheel = wheel
+		self.table = table
+
+	def cycle(self, player):
+		self.table.clearBets()  # added
+		player.placeBets()
+		winning_bin = self.table.wheel.next()
+		for betmade in self.table.bets:
+			winner = False
+			for winning_outcome in winning_bin:
+				if betmade.outcome.name == winning_outcome.name:
+					player.win(betmade)
+					winner = True
+					break
+			if winner == False:
+				player.lose(betmade)
+
+		player.roundsToGo -= 1
+
+class Player:
+	"""
+	This is a superclass from which each player specialisation inherits from.
+	Chapter 13, pages 79-84
+	"""
+	def __init__(self, table):
+		self.stake = 200
+		self.roundsToGo = 30
+		self.table = table
+		self.initialBet = 10
+		self.nextBet = self.initialBet
+
+	def win(self, bet):
+		amountWon = bet.winAmount()
+		self.stake += amountWon
+
+	def lose(self, bet):
+		amountLost = bet.loseAmount()
+		self.stake -= amountLost
+
+	def isPlaying(self) -> bool:
+		return (self.stake >= self.nextBet) and self.roundsToGo != 0
+
+	def placeBets(self):
+		if self.isPlaying():
+			self.newBet = Bet(self.nextBet, self.specificBet)
+			# print(self.roundsToGo, self.newBet, self.initialBet, self.betMultiple)
+			try:
+				self.table.placeBet(self.newBet)
+			except (InvalidBet) as error:
+				raise InvalidBet('Over table limit')
+
+	def reset(self):
+		pass
+
+class PlayerRandom(Player):
+	def __init__(self, table):
+		super().__init__(table)
+		self.rng = random.Random()
+		self.rng.seed(4)
+	
+	def placeBets(self):
+		return super().placeBets()
+
+class Passenger57:
+	"""
+	Passenger57 is a player who always bets on black
+	This class is used to test the game functionality, it's not a strategy used in the simulation (or much of a strategy anyway)
+	Chapter 11, pages 69-73
+	"""
+	def __init__(self, table, wheel):
+		self.wheel = wheel
+		self.table = table
+
+	def placeBets(self):
+		self.black = Outcome("Black", 1)  # TODO - much later - remove duplication
+		self.table.place_bet(Bet(1, self.black))
+
+	def win(self, bet):
+		print("Your bet was a winner, you won: {}".format(bet.winAmount()))
+
+	def lose(self, bet):
+		print("Your bet was a loser")
+
+class Martingale(Player):
+	"""
+	This player doubles their bet on every loss and resets their bet on a win.
+	Chapter 13, pages 79-84
+	"""
+	def __init__(self, table):
+		super().__init__(table)
+		self.lossCount = 0
+		self.betMultiple = 1
+		self.specificBet = table.wheel.getOutcome('Black')
+
+	def placeBets(self):
+		self.nextBet = self.initialBet * self.betMultiple
+		super().placeBets()
+
+	def win(self, bet):
+		super().win(bet)
+		self.lossCount = 0
+		self.betMultiple = 1
+
+	def lose(self, bet):
+		super().lose(bet)
+		self.lossCount += 1
+		self.betMultiple *= 2
+
+	def reset(self):
+		super().reset()
+		self.lossCount = 0
+		self.betMultiple = 1
+
+class InvalidBet(Exception):
+	"""
+	InvalidBet is raised when the Player attempts to place a bet which exceeds the table’s limit.
+	Chapter 10, pages 66-67
+	"""
 	def __init__(self, expression):
 		self.expression = expression
+
+class Simulator:
+	"""
+	Return statistics of a game with a given player and their betting strategy
+	Chapter 18, pages 85-89
+	"""
+	def __init__(self, player, game):
+		self.player = player
+		self.game = game
+		self.initDuration = 250
+		self.initStake = 1000
+		self.samples = 50
+
+	def session(self):
+		self.player.stake = self.initStake
+		self.player.roundsToGo = self.samples
+		self.player.initialBet = 10
+		self.player.nextBet = 10
+		stakeList = list()
+
+		try:
+			while self.player.isPlaying():
+				self.game.cycle(self.player)
+				stakeList.append(self.player.stake)
+		except (InvalidBet) as error:
+			return stakeList
+		return stakeList
+
+	def gather(self):
+		durations = list()
+		maxima = list()
+
+		for _ in range(self.initDuration):
+			self.player.reset()
+			sessionStakes = self.session()
+			durations.append(len(sessionStakes))
+			maxima.append(max(sessionStakes))
+		return maxima, durations
+
+class IntegerStatistics(list):
+	def mean(self):
+		return sum(self) / len(self)
+
+	def stdev(self):
+		m = self.mean()
+		return math.sqrt( sum( (x-m)**2 for x in self ) / (len(self)-1) )
+
+rwheel = Wheel()
+rtable = Table(100, rwheel)
+rgame = RouletteGame(rwheel, rtable)
+rsim = Simulator(Martingale(rtable), rgame)
+maxima, duration = rsim.gather()
+print(maxima)
+print(duration)
