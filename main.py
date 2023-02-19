@@ -193,7 +193,7 @@ class Table:
 	A table is where bets can be placed
 	Chapter 10, pages 63-68
 	"""
-	def __init__(self, limit, wheel):
+	def __init__(self, limit, wheel:Wheel):
 		self.limit = limit
 		self.bets = []
 		self.wheel = wheel
@@ -203,7 +203,7 @@ class Table:
 		if not self.isValid(bet):
 			raise InvalidBet(f"The bet of {bet.amountBet} exceeds table limit of {self.limit}")
 
-	def __iter__(self) -> iter:
+	def __iter__(self):
 		return self.bets[:].__iter__()
 	
 	def __str__(self) -> str:
@@ -257,11 +257,11 @@ class Player:
 		self.initialBet = 10
 		self.nextBet = self.initialBet
 
-	def win(self, bet):
+	def win(self, bet:Bet):
 		amountWon = bet.winAmount()
 		self.stake += amountWon
 
-	def lose(self, bet):
+	def lose(self, bet:Bet):
 		amountLost = bet.loseAmount()
 		self.stake -= amountLost
 
@@ -281,13 +281,30 @@ class Player:
 		pass
 
 class PlayerRandom(Player):
-	def __init__(self, table):
+	def __init__(self, table:Table):
 		super().__init__(table)
 		self.rng = random.Random()
 		self.rng.seed(4)
 	
 	def placeBets(self):
+		self.specificBet = self.table.wheel.bins[self.rng.randint(0,37)]
 		return super().placeBets()
+
+class PlayerFibonacci(Player):
+	def __init__(self):
+		self.recent:int = 1
+		self.previous:int = 0
+	
+	def win(self, bet:Bet):
+		super().win(bet)
+		self.recent = 1
+		self.previous = 0
+
+	def lose(self, bet:Bet):
+		super().lose(bet)
+		self.next:int = self.recent + self.previous
+		self.previous = self.recent
+		self.recent = self.next
 
 class Passenger57:
 	"""
@@ -314,7 +331,7 @@ class Martingale(Player):
 	This player doubles their bet on every loss and resets their bet on a win.
 	Chapter 13, pages 79-84
 	"""
-	def __init__(self, table):
+	def __init__(self, table:Table):
 		super().__init__(table)
 		self.lossCount = 0
 		self.betMultiple = 1
@@ -324,12 +341,12 @@ class Martingale(Player):
 		self.nextBet = self.initialBet * self.betMultiple
 		super().placeBets()
 
-	def win(self, bet):
+	def win(self, bet:Bet):
 		super().win(bet)
 		self.lossCount = 0
 		self.betMultiple = 1
 
-	def lose(self, bet):
+	def lose(self, bet:Bet):
 		super().lose(bet)
 		self.lossCount += 1
 		self.betMultiple *= 2
