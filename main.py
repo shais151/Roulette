@@ -172,11 +172,11 @@ class BinBuilder:
 		return outcomes
 
 class Bet:
-	def __init__(self, amount: int, outcome):
+	def __init__(self, amount: int, outcome:Outcome):
 		self.amountBet:int = int(amount)
 		self.outcome = outcome
 	
-	def winAmount(self) -> int:
+	def winAmount(self) -> float:
 		return self.outcome.winAmount(self.amountBet) + self.amountBet
 	
 	def loseAmount(self) -> int:
@@ -195,10 +195,10 @@ class Table:
 	"""
 	def __init__(self, limit, wheel:Wheel):
 		self.limit = limit
-		self.bets = []
+		self.bets:list[Bet] = []
 		self.wheel = wheel
 
-	def placeBet(self, bet):
+	def placeBet(self, bet:Bet):
 		self.bets.append(bet)
 		if not self.isValid(bet):
 			raise InvalidBet(f"The bet of {bet.amountBet} exceeds table limit of {self.limit}")
@@ -210,7 +210,7 @@ class Table:
 		pass
 
 	def __repr__(self) -> str:
-		pass
+		return f"{self.__class__.__name__}({self.limit}, {self.wheel})"
 	
 	def isValid(self, bet):
 		if sum(obj.amountBet for obj in self.bets) > self.limit:
@@ -219,31 +219,6 @@ class Table:
 
 	def clearBets(self):
 		self.bets.clear()
-
-class RouletteGame:
-	"""
-	This class manages the game state through the cycle method (place a bet, spin the wheel, settle bets)
-	Chapter 11, pages 69-73
-	"""
-	def __init__(self, wheel, table):
-		self.wheel = wheel
-		self.table = table
-
-	def cycle(self, player):
-		self.table.clearBets()  # added
-		player.placeBets()
-		winning_bin = self.table.wheel.next()
-		for betmade in self.table.bets:
-			winner = False
-			for winning_outcome in winning_bin:
-				if betmade.outcome.name == winning_outcome.name:
-					player.win(betmade)
-					winner = True
-					break
-			if winner == False:
-				player.lose(betmade)
-
-		player.roundsToGo -= 1
 
 class Player:
 	"""
@@ -356,6 +331,27 @@ class Martingale(Player):
 		self.lossCount = 0
 		self.betMultiple = 1
 
+class SevenReds(Martingale):
+    """
+    SevenReds is a Martingale player who places bets in Roulette.
+    This player waits for seven red wins in a row before betting black.
+    Chapter 15, pages 91-94
+    """
+    def __init__(self, table):
+        super().__init__(table)
+        self.redCount = 7
+
+    def placeBets(self):
+        if self.redCount == 0:
+            self.nextBet = self.initialBet * self.betMultiple
+            super().placeBets()
+
+    def winners(self, outcomes):
+        if self.table.wheel.getOutcome('Red') in outcomes:
+            self.redCount -= 1
+        else:
+            self.redCount = 7
+
 class InvalidBet(Exception):
 	"""
 	InvalidBet is raised when the Player attempts to place a bet which exceeds the table’s limit.
@@ -364,12 +360,37 @@ class InvalidBet(Exception):
 	def __init__(self, expression):
 		self.expression = expression
 
+class RouletteGame:
+	"""
+	This class manages the game state through the cycle method (place a bet, spin the wheel, settle bets)
+	Chapter 11, pages 69-73
+	"""
+	def __init__(self, wheel:Wheel, table:Table):
+		self.wheel = wheel
+		self.table = table
+
+	def cycle(self, player:Player):
+		self.table.clearBets()  # added
+		player.placeBets()
+		winning_bin:Bin = self.table.wheel.next()
+		for betmade in self.table.bets:
+			winner = False
+			for winning_outcome in winning_bin:
+				if betmade.outcome.name == winning_outcome.name:
+					player.win(betmade)
+					winner = True
+					break
+			if winner == False:
+				player.lose(betmade)
+
+		player.roundsToGo -= 1
+
 class Simulator:
 	"""
 	Return statistics of a game with a given player and their betting strategy
 	Chapter 18, pages 85-89
 	"""
-	def __init__(self, player, game):
+	def __init__(self, player:Player, game:RouletteGame):
 		self.player = player
 		self.game = game
 		self.initDuration = 250
@@ -413,7 +434,7 @@ class IntegerStatistics(list):
 rwheel = Wheel()
 rtable = Table(100, rwheel)
 rgame = RouletteGame(rwheel, rtable)
-rsim = Simulator(Martingale(rtable), rgame)
+rsim = Simulator(PlayerRandom(rtable), rgame)
 maxima, duration = rsim.gather()
 print(maxima)
 print(duration)
